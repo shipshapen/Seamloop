@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Seamloop",
+  "version": "1.0.0",
+  "description": "Loop any soundtrack (OST) seamlessly on YouTube and YouTube Music.",
+  "icons": {
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "64": "icons/icon-64.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["storage"],
+  "minimum_chrome_version": "111",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{9b820a62-bd65-4a88-9af1-f0964773269f}",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*", "*://music.youtube.com/*"],
+      "js": ["page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://www.youtube.com/*", "*://music.youtube.com/*"],
+      "js": [
+        "env.js",
+        "player-io.js",
+        "looper.js",
+        "mse-capture.js",
+        "audio-graph.js",
+        "capture-fast.js",
+        "capture-record.js",
+        "panel.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
