@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Looper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0d0f13;
+    --panel: #14171d;
+    --panel-2: #1d222b;
+    --line: #2a3140;
+    --ink: #e8e4da;
+    --muted: #8a90a2;
+    --green: #cbe896;
+    --blue: #7fc8f8;
+    --red: #f28b82;
+    --radius: 10px;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --display: 'Bricolage Grotesque', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--display); }
+  body { padding: 32px 20px 64px; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue); }
+  h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 700; margin: 6px 0 4px; letter-spacing: -0.01em; }
+  header p { color: var(--muted); margin: 0; max-width: 62ch; line-height: 1.55; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .grow { flex: 1 1 220px; }
+
+  input[type="file"] { display: none; }
+  .filebtn, button {
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 16px; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .filebtn:hover, button:hover:not(:disabled) { border-color: var(--blue); }
+  button.primary { background: var(--green); border-color: var(--green); color: #182008; font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: #e0f4b8; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button:focus-visible, .filebtn:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .filename { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  label.opt { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  label.opt input[type="number"] { width: 70px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-family: var(--mono); font-size: 12px; padding: 6px 8px; }
+  label.opt input[type="checkbox"] { accent-color: var(--blue); }
+
+  .progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 14px; display: none; }
+  .progress .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), var(--green)); transition: width .15s; }
+  .status { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 8px; min-height: 14px; }
+
+  .scope { position: relative; background: #0d0f13; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .scope canvas { display: block; width: 100%; height: 180px; }
+  .scope .legend { position: absolute; top: 8px; right: 10px; font-family: var(--mono); font-size: 10px; color: var(--muted); display: flex; gap: 14px; }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .stat .k { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .stat .v { font-family: var(--mono); font-size: 17px; margin-top: 4px; }
+  .stat input { width: 100%; background: transparent; border: none; border-bottom: 1px dashed var(--line); color: var(--ink); font-family: var(--mono); font-size: 17px; padding: 2px 0; }
+  .stat input:focus { outline: none; border-bottom-color: var(--blue); }
+
+  .conf-good { color: var(--green); } .conf-mid { color: var(--blue); } .conf-bad { color: var(--red); }
+
+  details { margin-top: 14px; }
+  summary { font-family: var(--mono); font-size: 11px; color: var(--muted); cursor: pointer; letter-spacing: .08em; text-transform: uppercase; }
+  table { font-family: var(--mono); font-size: 12px; border-collapse: collapse; margin-top: 10px; width: 100%; }
+  th, td { text-align: left; padding: 5px 12px 5px 0; color: var(--muted); border-bottom: 1px solid var(--line); }
+  th { font-weight: 500; color: var(--ink); font-size: 11px; }
+
+  .hidden { display: none !important; }
+  .note { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 10px; }
+  .fail { color: var(--red); font-family: var(--mono); font-size: 13px; line-height: 1.5; }
+
+  @media (prefers-reduced-motion: reduce) { .progress .bar { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="panel">
+    <div class="row">
+      <label class="filebtn">Choose Audio File<input id="file" type="file" accept=".mp3,audio/*" /></label>
+      <span id="filename" class="filename grow">no file loaded</span>
+      <button id="analyze" class="primary" disabled>Find Loop</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label class="opt">min loop length <input id="minLoop" type="number" value="10" min="2" step="1" /> s.</label>
+      <label class="opt">similarity threshold <input id="thr" type="number" value="0.80" min="0.5" max="0.95" step="0.01" /></label>
+      <label class="opt"><input id="xfade" type="checkbox" checked /> micro-crossfade <input id="xfadeMs" type="number" value="10" min="0" max="60" step="1" /> ms.</label>
+    </div>
+    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="panel hidden" id="results">
+    <div class="scope">
+      <canvas id="wave" width="1760" height="360"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--blue)"></i>loop region</span>
+        <span><i style="background:var(--green)"></i>playhead</span>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">loop start (s.)</div><input id="loopStartIn" class="v" type="text" inputmode="decimal" /></div>
+      <div class="stat"><div class="k">loop end (s.)</div><input id="loopEndIn" class="v" type="text" inputmode="decimal" /></div>
+      <div class="stat"><div class="k">loop length (s.)</div><div class="v" id="loopLen">—</div></div>
+      <div class="stat"><div class="k">confidence</div><div class="v" id="conf">—</div></div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button id="play" class="primary">Play Loop</button>
+      <button id="seam">Inspect Seam (−5 s.)</button>
+      <button id="stop">Stop</button>
+      <span class="status" id="playpos" style="margin:0"></span>
+    </div>
+
+    <details>
+      <summary>diagnostics</summary>
+      <div id="diag"></div>
+    </details>
+  </section>
+
+  <section class="panel hidden" id="failPanel">
+    <div class="fail" id="failMsg"></div>
+    <p class="note">File may only contain a single pass of the loop</p>
+  </section>
+</div>
+
+<script src="looper.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+
+  let ctx = null;
+  let decoded = null;
+  let playBuf = null;
+  let playBufKey = '';
+  let source = null;
+  let startedAt = 0, startOffset = 0;
+  let raf = 0;
+  let peaks = null;
+  let result = null;
+
+  const getCtx = () => (ctx ??= new (window.AudioContext || window.webkitAudioContext)());
+
+  $('file').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    stopPlayback();
+    $('filename').textContent = f.name;
+    $('analyze').disabled = true;
+    $('status').textContent = 'Decoding…';
+    try {
+      const buf = await f.arrayBuffer();
+      decoded = await getCtx().decodeAudioData(buf);
+      peaks = null; result = null; playBuf = null; playBufKey = '';
+      $('results').classList.add('hidden');
+      $('failPanel').classList.add('hidden');
+      $('status').textContent =
+        `Loaded: ${decoded.duration.toFixed(1)} s, ${decoded.sampleRate} Hz, ${decoded.numberOfChannels} ch`;
+      $('analyze').disabled = false;
+    } catch (err) {
+      $('status').textContent = 'Could not decode this file: ' + err.message;
+    }
+  });
+
+  $('analyze').addEventListener('click', async () => {
+    if (!decoded) return;
+    stopPlayback();
+    $('analyze').disabled = true;
+    $('progress').style.display = 'block';
+    $('results').classList.add('hidden');
+    $('failPanel').classList.add('hidden');
+
+    const opts = {
+      minLoopSec: Math.max(2, parseFloat($('minLoop').value) || 10),
+      simThreshold: Math.min(0.95, Math.max(0.5, parseFloat($('thr').value) || 0.8)),
+    };
+    try {
+      result = await LoopFinder.findLoop(decoded, opts, (p, label) => {
+        $('bar').style.width = (p * 100).toFixed(1) + '%';
+        $('status').textContent = label + (label === 'Done' ? '.' : '…');
+      });
+    } catch (err) {
+      $('status').textContent = 'Analysis error: ' + err.message;
+      $('analyze').disabled = false;
+      return;
+    }
+    $('progress').style.display = 'none';
+    $('analyze').disabled = false;
+
+    if (!result.found) {
+      $('status').textContent = 'No loop found.';
+      $('failMsg').textContent = result.reason;
+      $('failPanel').classList.remove('hidden');
+      return;
+    }
+    $('status').textContent = 'Loop found.';
+    $('loopStartIn').value = result.loopStart.toFixed(4);
+    $('loopEndIn').value = result.loopEnd.toFixed(4);
+    updateDerived();
+    const c = result.confidence;
+    const el = $('conf');
+    el.textContent = (c * 100).toFixed(0) + '%';
+    el.className = 'v ' + (c > 0.75 ? 'conf-good' : c > 0.45 ? 'conf-mid' : 'conf-bad');
+    const d = result.details;
+    $('diag').innerHTML =
+      `<table><tr><th>metric</th><th>value</th></tr>` +
+      `<tr><td>mean spectral similarity</td><td>${d.meanSimilarity.toFixed(3)}</td></tr>` +
+      `<tr><td>matched run length</td><td>${d.matchedRunSec.toFixed(1)} s</td></tr>` +
+      `<tr><td>sample refinement NCC</td><td>${d.refinedNcc.toFixed(3)}</td></tr>` +
+      `<tr><td>refinement shift</td><td>${d.refineDeltaSamples} samples</td></tr>` +
+      `<tr><td>analysis hop</td><td>${(d.hopSec * 1000).toFixed(0)} ms</td></tr></table>` +
+      `<table><tr><th>candidate lag (s)</th><th>run (s)</th><th>mean sim</th></tr>` +
+      d.topCandidates.map((t) => `<tr><td>${t.lagSec.toFixed(2)}</td><td>${t.runSec.toFixed(1)}</td><td>${t.meanSim.toFixed(3)}</td></tr>`).join('') +
+      `</table>`;
+    $('results').classList.remove('hidden');
+    drawWave();
+  });
+
+  const getPoints = () => {
+    let s = parseFloat($('loopStartIn').value);
+    let e = parseFloat($('loopEndIn').value);
+    if (!isFinite(s) || s < 0) s = 0;
+    if (!isFinite(e) || e > decoded.duration) e = decoded.duration;
+    if (e - s < 0.05) e = Math.min(decoded.duration, s + 0.05);
+    return { s, e };
+  };
+  function updateDerived() {
+    const { s, e } = getPoints();
+    $('loopLen').textContent = (e - s).toFixed(3);
+    drawWave();
+  }
+  $('loopStartIn').addEventListener('change', updateDerived);
+  $('loopEndIn').addEventListener('change', updateDerived);
+
+  function buildPlayBuffer() {
+    const { s, e } = getPoints();
+    const useX = $('xfade').checked;
+    const ms = Math.max(0, parseFloat($('xfadeMs').value) || 0);
+    const key = [s, e, useX ? ms : 0].join('|');
+    if (playBuf && playBufKey === key) return playBuf;
+    const c = getCtx();
+    const copy = c.createBuffer(decoded.numberOfChannels, decoded.length, decoded.sampleRate);
+    const chans = [];
+    for (let i = 0; i < decoded.numberOfChannels; i++) {
+      copy.getChannelData(i).set(decoded.getChannelData(i));
+      chans.push(copy.getChannelData(i));
+    }
+    if (useX && ms > 0) {
+      LoopFinder.crossfadeChannels(
+        chans,
+        Math.round(s * decoded.sampleRate),
+        Math.round(e * decoded.sampleRate),
+        Math.round((ms / 1000) * decoded.sampleRate)
+      );
+    }
+    playBuf = copy; playBufKey = key;
+    return copy;
+  }
+
+  function startPlayback(offsetSec) {
+    stopPlayback();
+    const c = getCtx();
+    if (c.state === 'suspended') c.resume();
+    const { s, e } = getPoints();
+    source = c.createBufferSource();
+    source.buffer = buildPlayBuffer();
+    source.loop = true;
+    source.loopStart = s;
+    source.loopEnd = e;
+    source.connect(c.destination);
+    startOffset = Math.max(0, Math.min(offsetSec, e - 0.01));
+    startedAt = c.currentTime;
+    source.start(0, startOffset);
+    tick();
+  }
+  function stopPlayback() {
+    if (source) { try { source.stop(); } catch (_) {} source.disconnect(); source = null; }
+    cancelAnimationFrame(raf);
+    $('playpos') && ($('playpos').textContent = '');
+    if (decoded && result) drawWave();
+  }
+  function playPosition() {
+    const { s, e } = getPoints();
+    const el = getCtx().currentTime - startedAt + startOffset;
+    return el < s ? el : s + ((el - s) % (e - s));
+  }
+  function tick() {
+    if (!source) return;
+    const pos = playPosition();
+    $('playpos').textContent = pos.toFixed(2) + ' s';
+    drawWave(pos);
+    raf = requestAnimationFrame(tick);
+  }
+
+  $('play').addEventListener('click', () => decoded && result && startPlayback(0));
+  $('seam').addEventListener('click', () => {
+    if (!decoded || !result) return;
+    const { s, e } = getPoints();
+    startPlayback(Math.max(s, e - 5));
+  });
+  $('stop').addEventListener('click', stopPlayback);
+  $('xfade').addEventListener('change', () => { playBufKey = ''; });
+  $('xfadeMs').addEventListener('change', () => { playBufKey = ''; });
+
+  function computePeaks(cols) {
+    const mono = LoopFinder.downmix(decoded);
+    const per = mono.length / cols;
+    const out = new Float32Array(cols * 2);
+    for (let x = 0; x < cols; x++) {
+      let mn = 1, mx = -1;
+      const a = Math.floor(x * per), b = Math.min(mono.length, Math.floor((x + 1) * per));
+      for (let i = a; i < b; i++) { const v = mono[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
+      out[x * 2] = mn; out[x * 2 + 1] = mx;
+    }
+    return out;
+  }
+  function drawWave(playPos) {
+    const cv = $('wave');
+    const g = cv.getContext('2d');
+    const W = cv.width, H = cv.height, mid = H / 2;
+    if (!peaks) peaks = computePeaks(W);
+    g.clearRect(0, 0, W, H);
+    const { s, e } = getPoints();
+    const dur = decoded.duration;
+    const xs = (s / dur) * W, xe = (e / dur) * W;
+    // loop region
+    g.fillStyle = 'rgba(127,200,248,0.10)';
+    g.fillRect(xs, 0, xe - xs, H);
+    // waveform
+    g.strokeStyle = '#4a5468';
+    g.beginPath();
+    for (let x = 0; x < W; x++) {
+      g.moveTo(x + 0.5, mid - peaks[x * 2 + 1] * mid * 0.92);
+      g.lineTo(x + 0.5, mid - peaks[x * 2] * mid * 0.92);
+    }
+    g.stroke();
+    // loop-region waveform overlay tint
+    g.save();
+    g.beginPath(); g.rect(xs, 0, xe - xs, H); g.clip();
+    g.strokeStyle = '#7fc8f8';
+    g.globalAlpha = 0.85;
+    g.beginPath();
+    for (let x = Math.floor(xs); x < Math.ceil(xe); x++) {
+      g.moveTo(x + 0.5, mid - peaks[x * 2 + 1] * mid * 0.92);
+      g.lineTo(x + 0.5, mid - peaks[x * 2] * mid * 0.92);
+    }
+    g.stroke();
+    g.restore();
+    // markers
+    g.fillStyle = '#7fc8f8';
+    g.fillRect(xs - 1, 0, 2, H);
+    g.fillRect(xe - 1, 0, 2, H);
+    // playhead
+    if (playPos != null) {
+      const xp = (playPos / dur) * W;
+      g.fillStyle = '#cbe896';
+      g.fillRect(xp - 1, 0, 2, H);
+    }
+  }
+})();
+</script>
+</body>
+</html>
